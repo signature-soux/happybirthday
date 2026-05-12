@@ -15,60 +15,45 @@
     <script type="text/javascript" src="./file/functions.js" charset="utf-8"></script>
     <script type="text/javascript" src="./file/love.js" charset="utf-8"></script>
     <style>
-        /* Mobile Device ke liye Responsive Styling */
+        /* Mobile adjustment */
         @media only screen and (max-width: 768px) {
-            #main {
-                width: 100% !important;
-                height: 100% !important;
-            }
-            #wrap {
-                width: 100% !important;
-                height: 100% !important;
-                margin-top: 0 !important;
-                position: relative !important;
-            }
-            #text {
-                width: 90% !important;
-                height: auto !important;
-                left: 5% !important;
-                top: 10% !important;
-                margin-top: 0 !important;
-                font-size: 1.2rem !important;
-            }
-            #code {
-                margin-top: 0 !important;
-                position: static !important;
-            }
-            #clock-box {
-                bottom: 5% !important;
-                left: 5% !important;
-                width: 90% !important;
-                text-align: center !important;
-                font-size: 1rem !important;
-            }
-            #canvas {
+            body { margin: 0; padding: 0; overflow: hidden; }
+            #main { width: 100% !important; height: 100% !important; margin: 0 !important; }
+            #wrap { width: 100% !important; height: 100% !important; margin: 0 !important; position: relative !important; }
+            #text { 
+                width: 90% !important; 
+                left: 5% !important; 
+                top: 50px !important; 
+                font-size: 16px !important; 
                 position: absolute !important;
-                top: 0 !important;
+                z-index: 999;
+            }
+            #canvas { 
+                width: 100% !important; 
+                height: 100% !important; 
+                display: block !important;
+            }
+            #clock-box { 
+                position: absolute !important; 
+                bottom: 20px !important; 
+                width: 100% !important; 
+                text-align: center !important;
                 left: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                z-index: -1 !important; /* Text ko upar rakhne ke liye */
+                font-size: 14px !important;
             }
         }
     </style>
     <script>
         function playAudio() {
             var audio = document.getElementById("myAudio");
-            audio.play();
+            if (audio) audio.play();
         }
     </script>
 </head>
 <body>
     <div id="main">
-        <div id="error"><a href="http://www.google.cn/chrome/intl/zh-CN/landing_chrome.html?hl=zh-CN&brand=CHMI">Chrome</a> (<a href="http://firefox.com.cn/download/">Firefox</a>)</div>
-        <audio autoplay="autoplay" height="100" width="100" id="myAudio">
+        <audio autoplay="autoplay" id="myAudio">
             <source src="aud.mp3" type="audio/mp3" />
-            <embed height="100" width="100" src="aud.mp3" />
         </audio>
         <div id="wrap">
             <div id="text">
@@ -83,7 +68,8 @@
                 </div>
             </div>
             <div id="clock-box">
-                <span id="clock">577 days 0 hours 0 minutes 0 seconds</span> </div>
+                <span id="clock"></span>
+            </div>
             <canvas id="canvas"></canvas>
         </div>
     </div>
@@ -91,148 +77,38 @@
     <script>
     (function() {
         var canvas = $('#canvas');
-        
-        if (!canvas[0].getContext) {
-            $("#error").show();
-            return false;
-        }
+        if (!canvas[0].getContext) { return; }
 
-        // Screen size ke hisaab se Canvas ka size set karna
-        var width = (window.innerWidth > 0) ? window.innerWidth : screen.width;
-        var height = (window.innerHeight > 0) ? window.innerHeight : screen.height;
-        
+        var width = $(window).width();
+        var height = $(window).height();
         canvas.attr("width", width);
         canvas.attr("height", height);
 
         var opts = {
-            seed: {
-                x: width / 2 - 20,
-                color: "rgb(190, 26, 37)",
-                scale: (width < 768) ? 1.5 : 2 // Mobile ke liye seed scale chota kiya
-            },
-            branch: [
-                [535, height - 100, 570, height / 2.5, 500, 200, 30, 100, [ // y positions ko height par depend kiya
-                    [540, height / 1.5, 455, height / 1.8, 340, 400, 13, 100, [
-                        [450, 435, 434, 430, 394, 395, 2, 40]
-                    ]],
-                    [550, height / 1.6, 600, height / 2.2, 680, 345, 12, 100, [
-                        [578, 400, 648, 409, 661, 426, 3, 80]
-                    ]],
-                    [539, 281, 537, 248, 534, 217, 3, 40],
-                    [546, 397, 413, 247, 328, 244, 9, 80, [
-                        [427, 286, 383, 253, 371, 205, 2, 40],
-                        [498, 345, 435, 315, 395, 330, 4, 60]
-                    ]],
-                    [546, 357, 608, 252, 678, 221, 6, 100, [
-                        [590, 293, 646, 277, 648, 271, 2, 80]
-                    ]]
-                ]] 
-            ],
-            bloom: {
-                num: (width < 768) ? 400 : 700, // Mobile ke liye blooms kam kiye complexity kam karne ko
-                width: width,
-                height: height - 100,
-            },
-            footer: {
-                width: width,
-                height: 5,
-                speed: 10,
-            }
+            seed: { x: width / 2, color: "rgb(190, 26, 37)", scale: (width < 600 ? 1.5 : 2) },
+            branch: [[width/2, height, width/2, height/2, width/2-100, height/3, 30, 100, []]],
+            bloom: { num: 700, width: width, height: height },
+            footer: { width: width, height: 5, speed: 10 }
         }
 
         var tree = new Tree(canvas[0], width, height, opts);
         var seed = tree.seed;
-        var foot = tree.footer;
         var hold = 1;
 
-        // Mobile touch handling support add kiya
-        var clickEvent = (width < 768) ? 'touchstart' : 'click';
-
-        canvas.on(clickEvent, function(e) {
+        canvas.click(function(e) {
             playAudio();
-            var offset = canvas.offset(), x, y;
-            if(width < 768 && e.originalEvent.touches && e.originalEvent.touches.length) {
-                x = e.originalEvent.touches[0].pageX - offset.left;
-                y = e.originalEvent.touches[0].pageY - offset.top;
-            } else {
-                x = e.pageX - offset.left;
-                y = e.pageY - offset.top;
-            }
-            
-            if (seed.hover(x, y)) {
-                hold = 0; 
-                canvas.off(clickEvent); // use off instead of unbind for modern syntax
-                canvas.off("mousemove touchmove");
-                canvas.removeClass('hand');
-            }
+            var offset = canvas.offset(), x = e.pageX - offset.left, y = e.pageY - offset.top;
+            if (seed.hover(x, y)) { hold = 0; canvas.unbind("click"); }
         });
 
-        if(width >= 768) { // desktop-only hover effect
-            canvas.mousemove(function(e) {
-                var offset = canvas.offset(), x, y;
-                x = e.pageX - offset.left;
-                y = e.pageY - offset.top;
-                canvas.toggleClass('hand', seed.hover(x, y));
-            });
-        }
-
-        var seedAnimate = eval(Jscex.compile("async", function () {
-            seed.draw();
-            while (hold) {
-                $await(Jscex.Async.sleep(10));
-            }
-            while (seed.canScale()) {
-                seed.scale(0.95);
-                $await(Jscex.Async.sleep(10));
-            }
-            while (seed.canMove()) {
-                seed.move(0, 2);
-                foot.draw();
-                $await(Jscex.Async.sleep(10));
-            }
-        }));
-
-        var growAnimate = eval(Jscex.compile("async", function () {
-            do {
-                tree.grow();
-                $await(Jscex.Async.sleep(10));
-            } while (tree.canGrow());
-        }));
-
-        var flowAnimate = eval(Jscex.compile("async", function () {
-            do {
-                tree.flower(2);
-                $await(Jscex.Async.sleep(10));
-            } while (tree.canFlower());
-        }));
-
-        var moveAnimate = eval(Jscex.compile("async", function () {
-            tree.snapshot("p1", 240, 0, 610, 680);
-            while (tree.move("p1", 500, 0)) {
-                foot.draw();
-                $await(Jscex.Async.sleep(10));
-            }
-            foot.draw();
-            tree.snapshot("p2", 500, 0, 610, 680);
-
-            canvas.parent().css("background", "url(" + tree.toDataURL('image/png') + ")");
-            canvas.css("background", "#ffe");
-            $await(Jscex.Async.sleep(300));
-            canvas.css("background", "none");
-        }));
-
-        var textAnimate = eval(Jscex.compile("async", function () {
-            $("#code").show().typewriter();
-        }));
-        
         var runAsync = eval(Jscex.compile("async", function () {
-            $await(seedAnimate());
-            $await(growAnimate());
-            $await(flowAnimate());
-            // moveAnimate aur logic shift Desktop se adapt karne ko skip kar sakte hain mobile par
-            // lekin mobile styling z-index ko handle kar legi.
-            $await(moveAnimate());
-            textAnimate().start();
+            seed.draw();
+            while (hold) { $await(Jscex.Async.sleep(10)); }
+            while (seed.canScale()) { seed.scale(0.95); $await(Jscex.Async.sleep(10)); }
+            while (seed.canMove()) { seed.move(0, 2); tree.footer.draw(); $await(Jscex.Async.sleep(10)); }
+            do { tree.grow(); $await(Jscex.Async.sleep(10)); } while (tree.canGrow());
+            do { tree.flower(2); $await(Jscex.Async.sleep(10)); } while (tree.canFlower());
+            $("#code").show().typewriter();
         }));
 
         runAsync().start();
